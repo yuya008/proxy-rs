@@ -9,7 +9,7 @@ edition = "2018"
 clap = "2.33.1"
 tokio = { version = "0.2", features = ["full"] }
 openssl = { version = "0.10", features = ["vendored"] }
-snmalloc-rs = "0.2"
+jemallocator = "0.3"
 bytes = "0.5"
 env_logger = "0.7"
 log = "0.4"
