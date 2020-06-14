@@ -47,17 +47,11 @@ impl Decryption {
 
 impl Decryption {
     fn fill(&mut self, buffer: &mut [u8], buf_offset: usize) -> io::Result<usize> {
-        dbg!(self.buffer_offset);
-        dbg!(buf_offset);
         let buffer_range = &self.buffer[self.buffer_offset..];
-        dbg!(&buffer_range);
         if buffer_range.len() <= 0 {
-            dbg!(buffer_range.len());
             return Ok(0);
         }
-        dbg!(&buffer, buffer.len());
         let n = (&mut buffer[buf_offset..]).write(buffer_range)?;
-        dbg!(n);
         self.buffer_offset += n;
         Ok(n)
     }
@@ -101,23 +95,13 @@ impl Decryption {
     async fn read(&mut self) -> io::Result<Vec<u8>> {
         let head_buffer = self.read_head().await?;
         let iv = self.read_iv(&head_buffer);
-        // dbg!(&iv);
         let tag = self.read_tag(&head_buffer);
-        // dbg!(&tag);
         let aad = self.read_aad(&head_buffer);
-        // dbg!(&aad);
         let body_size = self.read_body_size(&head_buffer);
-        // dbg!(&body_size);
-
         let pt_buffer = self.read_body(body_size).await?;
-        // dbg!(&pt_buffer);
-        // dbg!(&self.cur_key);
         match decrypt_aead(self.alg, &self.cur_key, Some(iv), aad, &pt_buffer, tag) {
             Err(err) => Err(Error::new(ErrorKind::InvalidData, err)),
-            Ok(plain_text) => {
-                dbg!(&plain_text);
-                io::Result::Ok(plain_text)
-            }
+            Ok(plain_text) => io::Result::Ok(plain_text),
         }
     }
 }

@@ -30,9 +30,7 @@ impl RemoteServer {
     async fn parse_socks5_host_addr(client_de: &mut Decryption) -> io::Result<String> {
         let mut host_len_buf = [0_u8; 1];
         client_de.decryption_read_exact(&mut host_len_buf).await?;
-
-        let host_len = (&host_len_buf[..]).get_u64() as usize;
-
+        let host_len = (&host_len_buf[..]).get_u8() as usize;
         // host
         let mut host = vec![0_u8; host_len];
         client_de.decryption_read_exact(&mut host).await?;
