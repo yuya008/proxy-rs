@@ -50,6 +50,7 @@ impl Encryption {
         dbg!(&aad);
         buffer.put_u64(ct.len() as u64);
         dbg!(&ct, ct.len());
+        dbg!(&self.cur_key);
         io::Write::write(&mut buffer, &ct).unwrap();
         buffer
     }
