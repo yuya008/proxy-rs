@@ -99,11 +99,16 @@ impl Decryption {
     async fn read(&mut self) -> io::Result<Vec<u8>> {
         let head_buffer = self.read_head().await?;
         let iv = self.read_iv(&head_buffer);
+        dbg!(&iv);
         let tag = self.read_tag(&head_buffer);
+        dbg!(&tag);
         let aad = self.read_aad(&head_buffer);
+        dbg!(&aad);
         let body_size = self.read_body_size(&head_buffer);
+        dbg!(&body_size);
 
         let pt_buffer = self.read_body(body_size).await?;
+        dbg!(&pt_buffer);
 
         match decrypt_aead(self.alg, &self.cur_key, Some(iv), aad, &pt_buffer, tag) {
             Err(err) => Err(Error::new(ErrorKind::InvalidData, err)),
