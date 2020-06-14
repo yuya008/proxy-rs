@@ -69,7 +69,7 @@ impl RemoteServer {
 
         let mut data = [0_u8, 3];
         // step 1
-        match client_de.decryption_read_exact(&mut data).await {
+        match client_de.decryption_read_exact(&mut data[..]).await {
             Err(err) => {
                 warn!("client_socks5_handshake step 1-1 {:?}", err);
                 return;
