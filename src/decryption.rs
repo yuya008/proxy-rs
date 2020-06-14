@@ -55,6 +55,7 @@ impl Decryption {
             dbg!(buffer_range.len());
             return Ok(0);
         }
+        dbg!(buffer, buffer.len());
         let n = (&mut buffer[buf_offset..]).write(buffer_range)?;
         dbg!(n);
         self.buffer_offset += n;
