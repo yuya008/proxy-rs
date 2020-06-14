@@ -109,7 +109,7 @@ impl Decryption {
         match decrypt_aead(self.alg, &self.cur_key, Some(iv), aad, &pt_buffer, tag) {
             Err(err) => Err(Error::new(ErrorKind::InvalidData, err)),
             Ok(plain_text) => {
-                dbg!(plain_text);
+                dbg!(&plain_text);
                 io::Result::Ok(plain_text)
             }
         }
