@@ -41,17 +41,18 @@ impl Decryption {
             self.buffer = self.read().await?;
             self.buffer_offset = 0;
         }
+        dbg!(buf_offset);
         Ok(buf_offset)
     }
 }
 
 impl Decryption {
-    fn fill(&mut self, buffer: &mut [u8], buffer_offset: usize) -> io::Result<usize> {
+    fn fill(&mut self, buffer: &mut [u8], buf_offset: usize) -> io::Result<usize> {
         let buffer_range = &mut self.buffer[self.buffer_offset..];
         if buffer_range.len() <= 0 {
             return Ok(0);
         }
-        let n = (&mut buffer[buffer_offset..]).write(buffer_range)?;
+        let n = (&mut buffer[buf_offset..]).write(buffer_range)?;
         self.buffer_offset += n;
         Ok(n)
     }
