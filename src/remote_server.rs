@@ -87,7 +87,7 @@ impl RemoteServer {
 
         // step 2
         if let Err(err) = client_en.encryption_write(&[0x05_u8, 0x00_u8]).await {
-            warn!("client_socks5_handshake step 2 {:?}", err);
+            warn!("client_socks5_handshake step 2-1 {:?}", err);
             return;
         }
 
