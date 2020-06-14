@@ -43,14 +43,14 @@ impl Encryption {
 
         let mut buffer = vec![];
         io::Write::write(&mut buffer, &iv).unwrap();
-        dbg!(&iv);
+        // dbg!(&iv);
         io::Write::write(&mut buffer, &tag).unwrap();
-        dbg!(&tag);
+        // dbg!(&tag);
         io::Write::write(&mut buffer, &aad).unwrap();
-        dbg!(&aad);
+        // dbg!(&aad);
         buffer.put_u64(ct.len() as u64);
-        dbg!(&ct, ct.len());
-        dbg!(&self.cur_key);
+        // dbg!(&ct, ct.len());
+        // dbg!(&self.cur_key);
         io::Write::write(&mut buffer, &ct).unwrap();
         buffer
     }
