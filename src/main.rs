@@ -1,14 +1,10 @@
 #[macro_use]
 extern crate log;
-extern crate jemallocator;
 
 mod decryption;
 mod encryption;
 mod local_server;
 mod remote_server;
-
-#[global_allocator]
-static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 use clap::{crate_version, App, AppSettings, Arg, SubCommand};
 use local_server::LocalServer;
