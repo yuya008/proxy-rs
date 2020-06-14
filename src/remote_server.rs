@@ -67,7 +67,7 @@ impl RemoteServer {
         let mut client_en = Encryption::new(first_key.clone(), w0);
         let mut client_de = Decryption::new(first_key.clone(), r0);
 
-        let mut data = [0_u8, 3];
+        let mut data = [0_u8; 3];
         // step 1
         match client_de.decryption_read_exact(&mut data[..]).await {
             Err(err) => {
@@ -92,7 +92,7 @@ impl RemoteServer {
         }
 
         let target_addr: String;
-        let mut data = [0_u8, 4];
+        let mut data = [0_u8; 4];
 
         // step 3
         match client_de.decryption_read_exact(&mut data).await {
