@@ -20,12 +20,6 @@ impl Encryption {
         }
     }
 
-    fn gen_key(&mut self) -> Vec<u8> {
-        let k = self.cur_key.clone();
-        rand_bytes(&mut self.cur_key[..self.alg.key_len()]).unwrap();
-        k
-    }
-
     fn gen_vi(&mut self) -> Vec<u8> {
         let iv_len = self.alg.iv_len().unwrap();
         let mut vi = vec![0_u8; iv_len];
@@ -40,17 +34,12 @@ impl Encryption {
     }
 
     fn en(&mut self, data: &[u8]) -> Vec<u8> {
-        let key = self.gen_key();
         let iv = self.gen_vi();
         let aad = self.gen_aad();
 
-        let mut plain_text = vec![];
-        io::Write::write(&mut plain_text, &self.cur_key).unwrap();
-        io::Write::write(&mut plain_text, data).unwrap();
-
         let mut tag = [0_u8; 16];
 
-        let ct = encrypt_aead(self.alg, &key, Some(&iv), &aad, &plain_text, &mut tag).unwrap();
+        let ct = encrypt_aead(self.alg, &self.cur_key, Some(&iv), &aad, &data, &mut tag).unwrap();
 
         let mut buffer = vec![];
         io::Write::write(&mut buffer, &iv).unwrap();
@@ -60,7 +49,7 @@ impl Encryption {
         io::Write::write(&mut buffer, &aad).unwrap();
         dbg!(&aad);
         buffer.put_u64(ct.len() as u64);
-        dbg!(&ct);
+        dbg!(&ct, ct.len());
         io::Write::write(&mut buffer, &ct).unwrap();
         buffer
     }
