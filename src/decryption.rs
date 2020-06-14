@@ -50,9 +50,11 @@ impl Decryption {
     fn fill(&mut self, buffer: &mut [u8], buf_offset: usize) -> io::Result<usize> {
         let buffer_range = &mut self.buffer[self.buffer_offset..];
         if buffer_range.len() <= 0 {
+            dbg!(buffer_range.len());
             return Ok(0);
         }
         let n = (&mut buffer[buf_offset..]).write(buffer_range)?;
+        dbg!(n);
         self.buffer_offset += n;
         Ok(n)
     }
