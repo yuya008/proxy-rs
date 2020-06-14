@@ -9,6 +9,8 @@ pub struct Decryption {
     cur_key: Vec<u8>,
     alg: Cipher,
     reader: OwnedReadHalf,
+    buffer: Vec<u8>,
+    buffer_offset: usize,
 }
 
 impl Decryption {
@@ -17,15 +19,43 @@ impl Decryption {
             cur_key: first_key.into_bytes(),
             alg: Cipher::aes_256_gcm(),
             reader,
+            buffer: vec![],
+            buffer_offset: 0,
         }
     }
 
     pub async fn decryption_read(&mut self) -> io::Result<Vec<u8>> {
         self.read().await
     }
+
+    pub async fn decryption_read_exact(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let mut buf_offset: usize = 0;
+        loop {
+            let n = self.fill(buf, buf_offset)?;
+            buf_offset += n;
+
+            if buf_offset >= buf.len() {
+                break;
+            }
+
+            self.buffer = self.read().await?;
+            self.buffer_offset = 0;
+        }
+        Ok(buf_offset)
+    }
 }
 
 impl Decryption {
+    fn fill(&mut self, buffer: &mut [u8], buffer_offset: usize) -> io::Result<usize> {
+        let buffer_range = &mut self.buffer[self.buffer_offset..];
+        if buffer_range.len() <= 0 {
+            return Ok(0);
+        }
+        let n = (&mut buffer[buffer_offset..]).write(buffer_range)?;
+        self.buffer_offset += n;
+        Ok(n)
+    }
+
     fn head_size(&self) -> usize {
         self.alg.iv_len().unwrap_or(0) + 32 + 8
     }

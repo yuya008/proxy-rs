@@ -27,20 +27,55 @@ impl RemoteServer {
 }
 
 impl RemoteServer {
+    async fn parse_socks5_host_addr(client_de: &mut Decryption) -> io::Result<String> {
+        let mut host_len_buf = [0_u8, 1];
+        client_de.decryption_read_exact(&mut host_len_buf).await?;
+
+        let host_len = (&host_len_buf[..]).get_u64() as usize;
+
+        // host
+        let mut host = vec![0_u8; host_len];
+        client_de.decryption_read_exact(&mut host).await?;
+
+        // port
+        let mut port_buf = [0_u8; 2];
+        client_de.decryption_read_exact(&mut port_buf).await?;
+
+        let port = (&port_buf[..]).get_u16();
+
+        match std::str::from_utf8(&host[..]) {
+            Err(err) => io::Result::Err(io::Error::new(io::ErrorKind::InvalidData, err)),
+            Ok(host) => io::Result::Ok(format!("{}:{}", host, port)),
+        }
+    }
+
+    async fn parse_socks5_ip_addr(client_de: &mut Decryption) -> io::Result<String> {
+        // ip
+        let mut ip_buf = [0_u8, 6];
+        client_de.decryption_read_exact(&mut ip_buf).await?;
+
+        let port = (&ip_buf[4..]).get_u16();
+
+        let ip = Ipv4Addr::new(ip_buf[0], ip_buf[1], ip_buf[2], ip_buf[3]);
+
+        io::Result::Ok(format!("{}:{}", ip, port))
+    }
+
     async fn client_socks5_handshake(first_key: String, client: TcpStream) {
         let (r0, w0) = client.into_split();
 
         let mut client_en = Encryption::new(first_key.clone(), w0);
         let mut client_de = Decryption::new(first_key.clone(), r0);
 
+        let mut data = [0_u8, 3];
         // step 1
-        match client_de.decryption_read().await {
+        match client_de.decryption_read_exact(&mut data).await {
             Err(err) => {
                 warn!("client_socks5_handshake step 1-1 {:?}", err);
                 return;
             }
-            Ok(data) => {
-                if data.len() != 3 {
+            Ok(read_n) => {
+                if read_n != 3 {
                     warn!("client_socks5_handshake step 1-2 {:?}", data);
                     return;
                 } else if data[0] != 0x05 || data[1] != 0x01 || data[2] != 0x00 {
@@ -56,48 +91,47 @@ impl RemoteServer {
             return;
         }
 
-        let mut target_addr = String::new();
+        let target_addr: String;
+        let mut data = [0_u8, 4];
 
         // step 3
-        match client_de.decryption_read().await {
+        match client_de.decryption_read_exact(&mut data).await {
             Err(err) => {
                 warn!("client_socks5_handshake step 3-1 {:?}", err);
                 return;
             }
-            Ok(data) => {
-                if data.len() < 3 {
+            Ok(read_n) => {
+                if read_n != 4 {
                     warn!("client_socks5_handshake step 3-2 {:?}", data);
                     return;
                 } else if data[0] != 0x05 || data[1] != 0x01 || data[2] != 0x00 {
                     warn!("client_socks5_handshake step 3-3 {:?}", data);
                     return;
                 }
-
-                if data[3] == 0x03 {
-                    // host
-                    let host_len = (&data[4..5]).get_u64() as usize;
-                    match std::str::from_utf8(&data[5..5 + host_len]) {
-                        Err(err) => {
-                            warn!("client_socks5_handshake step 3-4 {:?}", err);
-                            return;
-                        }
-                        Ok(host) => {
-                            let port = (&data[5 + host_len..5 + host_len + 2]).get_u16();
-                            target_addr.push_str(format!("{}:{}", host, port).as_str());
-                            warn!("client_socks5_handshake step 3-5 {:?}", &target_addr);
-                        }
-                    }
-                } else if data[3] == 0x01 {
-                    // ip
-                    let ip = Ipv4Addr::new(data[4], data[5], data[6], data[7]);
-                    let port = (&data[8..10]).get_u16();
-                    target_addr.push_str(format!("{}:{}", ip, port).as_str());
-                } else {
-                    warn!("client_socks5_handshake step 3-4");
-                    return;
-                }
             }
         }
+
+        if data[3] == 0x03 {
+            match Self::parse_socks5_host_addr(&mut client_de).await {
+                Err(err) => {
+                    warn!("client_socks5_handshake step 3-4 {:?}", err);
+                    return;
+                }
+                Ok(s) => target_addr = s,
+            };
+        } else if data[3] == 0x01 {
+            match Self::parse_socks5_ip_addr(&mut client_de).await {
+                Err(err) => {
+                    warn!("client_socks5_handshake step 3-5 {:?}", err);
+                    return;
+                }
+                Ok(s) => target_addr = s,
+            };
+        } else {
+            warn!("client_socks5_handshake step 3-4");
+            return;
+        }
+
         // step 4
         let resp: [u8; 10] = [0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
         if let Err(err) = client_en.encryption_write(&resp).await {
