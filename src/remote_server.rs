@@ -132,28 +132,28 @@ impl RemoteServer {
         let s1: TcpStream;
 
         if data[3] == 0x03 {
-            match Self::socks5_host_connect(&mut client_de).await {
+            s1 = match Self::socks5_host_connect(&mut client_de).await {
                 Err(err) => {
                     warn!("client_socks5_handshake step 3-4 {:?}", err);
                     return;
                 }
-                Ok(s) => s1 = s,
+                Ok(s) => s,
             };
         } else if data[3] == 0x01 {
-            match Self::socks5_ipv4_connect(&mut client_de).await {
+            s1 = match Self::socks5_ipv4_connect(&mut client_de).await {
                 Err(err) => {
                     warn!("client_socks5_handshake step 3-5 {:?}", err);
                     return;
                 }
-                Ok(s) => s1 = s,
+                Ok(s) => s,
             };
         } else if data[3] == 0x04 {
-            match Self::socks5_ipv6_connect(&mut client_de).await {
+            s1 = match Self::socks5_ipv6_connect(&mut client_de).await {
                 Err(err) => {
                     warn!("client_socks5_handshake step 3-5 {:?}", err);
                     return;
                 }
-                Ok(s) => s1 = s,
+                Ok(s) => s,
             };
         } else {
             warn!("client_socks5_handshake step 3-4");
