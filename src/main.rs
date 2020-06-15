@@ -1,6 +1,9 @@
 #[macro_use]
 extern crate log;
 
+#[global_allocator]
+static ALLOC: snmalloc_rs::SnMalloc = snmalloc_rs::SnMalloc;
+
 mod decryption;
 mod encryption;
 mod local_server;

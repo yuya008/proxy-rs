@@ -12,3 +12,4 @@ openssl = { version = "0.10", features = ["vendored"] }
 bytes = "0.5"
 env_logger = "0.7"
 log = "0.4"
+snmalloc-rs = "0.2"
