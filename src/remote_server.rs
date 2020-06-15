@@ -2,7 +2,7 @@ use crate::decryption::Decryption;
 use crate::encryption::Encryption;
 use bytes::Buf;
 use std::error::Error;
-use std::net::Ipv4Addr;
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use tokio::net::tcp::OwnedReadHalf;
 use tokio::net::tcp::OwnedWriteHalf;
 use tokio::net::{TcpListener, TcpStream};
@@ -27,7 +27,7 @@ impl RemoteServer {
 }
 
 impl RemoteServer {
-    async fn parse_socks5_host_addr(client_de: &mut Decryption) -> io::Result<String> {
+    async fn socks5_host_connect(client_de: &mut Decryption) -> io::Result<TcpStream> {
         let mut host_len_buf = [0_u8; 1];
         client_de.decryption_read_exact(&mut host_len_buf).await?;
         let host_len = (&host_len_buf[..]).get_u8() as usize;
@@ -43,20 +43,41 @@ impl RemoteServer {
 
         match std::str::from_utf8(&host[..]) {
             Err(err) => io::Result::Err(io::Error::new(io::ErrorKind::InvalidData, err)),
-            Ok(host) => io::Result::Ok(format!("{}:{}", host, port)),
+            Ok(host) => {
+                let addr = format!("{}:{}", host, port);
+                info!("connect {:?}", &addr);
+                TcpStream::connect(&addr).await
+            }
         }
     }
 
-    async fn parse_socks5_ip_addr(client_de: &mut Decryption) -> io::Result<String> {
+    async fn socks5_ipv4_connect(client_de: &mut Decryption) -> io::Result<TcpStream> {
         // ip
         let mut ip_buf = [0_u8; 6];
         client_de.decryption_read_exact(&mut ip_buf).await?;
 
         let port = (&ip_buf[4..]).get_u16();
 
-        let ip = Ipv4Addr::new(ip_buf[0], ip_buf[1], ip_buf[2], ip_buf[3]);
+        let ip_addr = Ipv4Addr::new(ip_buf[0], ip_buf[1], ip_buf[2], ip_buf[3]);
+        let addr = SocketAddr::V4(SocketAddrV4::new(ip_addr, port));
+        info!("connect {:?}", &addr);
+        TcpStream::connect(addr).await
+    }
 
-        io::Result::Ok(format!("{}:{}", ip, port))
+    async fn socks5_ipv6_connect(client_de: &mut Decryption) -> io::Result<TcpStream> {
+        // ip
+        let mut ip_buf = [0_u8; 16];
+        client_de.decryption_read_exact(&mut ip_buf).await?;
+
+        let mut port_buf = [0_u8; 2];
+        client_de.decryption_read_exact(&mut port_buf).await?;
+
+        let ip = Ipv6Addr::from(ip_buf);
+        let port = (&port_buf[..]).get_u16();
+
+        let addr = SocketAddr::V6(SocketAddrV6::new(ip, port, 0, 0));
+        info!("connect {:?}", &addr);
+        TcpStream::connect(addr).await
     }
 
     async fn client_socks5_handshake(key: String, client: TcpStream) {
@@ -89,7 +110,6 @@ impl RemoteServer {
             return;
         }
 
-        let target_addr: String;
         let mut data = [0_u8; 4];
 
         // step 3
@@ -109,21 +129,31 @@ impl RemoteServer {
             }
         }
 
+        let s1: TcpStream;
+
         if data[3] == 0x03 {
-            match Self::parse_socks5_host_addr(&mut client_de).await {
+            match Self::socks5_host_connect(&mut client_de).await {
                 Err(err) => {
                     warn!("client_socks5_handshake step 3-4 {:?}", err);
                     return;
                 }
-                Ok(s) => target_addr = s,
+                Ok(s) => s1 = s,
             };
         } else if data[3] == 0x01 {
-            match Self::parse_socks5_ip_addr(&mut client_de).await {
+            match Self::socks5_ipv4_connect(&mut client_de).await {
                 Err(err) => {
                     warn!("client_socks5_handshake step 3-5 {:?}", err);
                     return;
                 }
-                Ok(s) => target_addr = s,
+                Ok(s) => s1 = s,
+            };
+        } else if data[3] == 0x04 {
+            match Self::socks5_ipv6_connect(&mut client_de).await {
+                Err(err) => {
+                    warn!("client_socks5_handshake step 3-5 {:?}", err);
+                    return;
+                }
+                Ok(s) => s1 = s,
             };
         } else {
             warn!("client_socks5_handshake step 3-4");
@@ -137,22 +167,9 @@ impl RemoteServer {
             return;
         }
 
-        info!("connect to {}", target_addr);
-
-        match TcpStream::connect(&target_addr).await {
-            Err(err) => {
-                warn!(
-                    "TcpStream::connect(&target_addr) {:?} {:?}",
-                    &target_addr, err
-                );
-                return;
-            }
-            Ok(s1) => {
-                let (r1, w1) = s1.into_split();
-                spawn(Self::proc0(client_de, w1));
-                spawn(Self::proc1(client_en, r1));
-            }
-        }
+        let (r1, w1) = s1.into_split();
+        spawn(Self::proc0(client_de, w1));
+        spawn(Self::proc1(client_en, r1));
     }
 
     async fn proc0(mut client_de: Decryption, mut target_writer: OwnedWriteHalf) {
