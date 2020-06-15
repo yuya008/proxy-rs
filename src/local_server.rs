@@ -11,15 +11,15 @@ use tokio::spawn;
 pub struct LocalServer {
     listen: String,
     remote_addr: String,
-    first_key: String,
+    key: String,
 }
 
 impl LocalServer {
-    pub fn new(first_key: String, listen: String, remote_addr: String) -> LocalServer {
+    pub fn new(key: String, listen: String, remote_addr: String) -> LocalServer {
         LocalServer {
             listen,
             remote_addr,
-            first_key,
+            key,
         }
     }
 
@@ -72,12 +72,12 @@ impl LocalServer {
             }
         }
     }
-    async fn process(s0: TcpStream, first_key: String, remote_addr: String) {
+    async fn process(s0: TcpStream, key: String, remote_addr: String) {
         match TcpStream::connect(&remote_addr).await {
             Ok(s1) => {
                 let (r0, w0) = s0.into_split();
                 let (r1, w1) = s1.into_split();
-                let (k0, k1) = (first_key.clone(), first_key.clone());
+                let (k0, k1) = (key.clone(), key.clone());
                 spawn(Self::proc0(k0, r1, w0));
                 spawn(Self::proc1(k1, r0, w1));
             }
@@ -99,8 +99,8 @@ impl LocalServer {
             debug!("client {:?}", &s0);
 
             let remote_addr = self.remote_addr.clone();
-            let first_key = self.first_key.clone();
-            spawn(Self::process(s0, first_key, remote_addr));
+            let key = self.key.clone();
+            spawn(Self::process(s0, key, remote_addr));
         }
     }
 }

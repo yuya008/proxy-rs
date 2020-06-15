@@ -12,12 +12,12 @@ use tokio::spawn;
 
 pub struct RemoteServer {
     listen: String,
-    first_key: String,
+    key: String,
 }
 
 impl RemoteServer {
-    pub fn new(first_key: String, listen: String) -> RemoteServer {
-        RemoteServer { listen, first_key }
+    pub fn new(key: String, listen: String) -> RemoteServer {
+        RemoteServer { listen, key }
     }
 
     pub fn start(&mut self) -> Result<(), Box<dyn Error>> {
@@ -59,11 +59,11 @@ impl RemoteServer {
         io::Result::Ok(format!("{}:{}", ip, port))
     }
 
-    async fn client_socks5_handshake(first_key: String, client: TcpStream) {
+    async fn client_socks5_handshake(key: String, client: TcpStream) {
         let (r0, w0) = client.into_split();
 
-        let mut client_en = Encryption::new(first_key.clone(), w0);
-        let mut client_de = Decryption::new(first_key.clone(), r0);
+        let mut client_en = Encryption::new(key.clone(), w0);
+        let mut client_de = Decryption::new(key.clone(), r0);
 
         let mut data = [0_u8; 3];
         // step 1
@@ -201,8 +201,8 @@ impl RemoteServer {
         let mut listenner = TcpListener::bind(&self.listen).await?;
         loop {
             let (client, _) = listenner.accept().await?;
-            let first_key = self.first_key.clone();
-            spawn(Self::client_socks5_handshake(first_key, client));
+            let key = self.key.clone();
+            spawn(Self::client_socks5_handshake(key, client));
         }
     }
 }

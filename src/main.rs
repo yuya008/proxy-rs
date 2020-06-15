@@ -4,6 +4,7 @@ extern crate log;
 #[global_allocator]
 static ALLOC: snmalloc_rs::SnMalloc = snmalloc_rs::SnMalloc;
 
+mod config;
 mod decryption;
 mod encryption;
 mod local_server;
@@ -40,12 +41,12 @@ fn main() {
                         .help("remote server addr"),
                 )
                 .arg(
-                    Arg::with_name("first-key")
+                    Arg::with_name("key")
                         .short("k")
-                        .long("first-key")
+                        .long("key")
                         .default_value("")
                         .required(true)
-                        .help("first key"),
+                        .help("key"),
                 ),
         )
         .subcommand(
@@ -60,12 +61,12 @@ fn main() {
                         .help("Listen on address"),
                 )
                 .arg(
-                    Arg::with_name("first-key")
+                    Arg::with_name("key")
                         .short("k")
-                        .long("first-key")
+                        .long("key")
                         .default_value("")
                         .required(true)
-                        .help("first key"),
+                        .help("key"),
                 ),
         )
         .setting(AppSettings::SubcommandRequired)
@@ -74,30 +75,26 @@ fn main() {
         ("local", Some(arg_matcher)) => {
             let listen = arg_matcher.value_of("listen").unwrap();
             let remote_addr = arg_matcher.value_of("remote-addr").unwrap();
-            let first_key = arg_matcher.value_of("first-key").unwrap();
+            let key = arg_matcher.value_of("key").unwrap();
 
-            LocalServer::new(
-                first_key.to_string(),
-                listen.to_string(),
-                remote_addr.to_string(),
-            )
-            .start()
-            .unwrap_or_else(|e| {
-                eprintln!("{}", e);
-                exit(1);
-            });
-        }
-        ("remote", Some(arg_matcher)) => {
-            let listen = arg_matcher.value_of("listen").unwrap();
-            let first_key = arg_matcher.value_of("first-key").unwrap();
-
-            RemoteServer::new(first_key.to_string(), listen.to_string())
+            LocalServer::new(key.to_string(), listen.to_string(), remote_addr.to_string())
                 .start()
                 .unwrap_or_else(|e| {
-                    eprintln!("{}", e);
+                    error!("{:?}", e);
                     exit(1);
                 });
         }
-        _ => panic!(),
+        ("remote", Some(arg_matcher)) => {
+            let listen = arg_matcher.value_of("listen").unwrap();
+            let key = arg_matcher.value_of("key").unwrap();
+
+            RemoteServer::new(key.to_string(), listen.to_string())
+                .start()
+                .unwrap_or_else(|e| {
+                    error!("{:?}", e);
+                    exit(1);
+                });
+        }
+        _ => unreachable!(),
     }
 }

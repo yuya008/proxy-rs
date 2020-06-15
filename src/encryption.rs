@@ -2,6 +2,7 @@ use bytes::BufMut;
 use openssl::rand::rand_bytes;
 use openssl::symm::{encrypt_aead, Cipher};
 use std::io;
+use std::io::Write;
 use tokio::net::tcp::OwnedWriteHalf;
 use tokio::prelude::*;
 
@@ -12,9 +13,9 @@ pub struct Encryption {
 }
 
 impl Encryption {
-    pub fn new(first_key: String, writer: OwnedWriteHalf) -> Encryption {
+    pub fn new(key: String, writer: OwnedWriteHalf) -> Encryption {
         Encryption {
-            cur_key: first_key.into_bytes(),
+            cur_key: key.into_bytes(),
             alg: Cipher::aes_256_gcm(),
             writer,
         }
@@ -42,11 +43,11 @@ impl Encryption {
         let ct = encrypt_aead(self.alg, &self.cur_key, Some(&iv), &aad, &data, &mut tag).unwrap();
 
         let mut buffer = vec![];
-        io::Write::write(&mut buffer, &iv).unwrap();
-        io::Write::write(&mut buffer, &tag).unwrap();
-        io::Write::write(&mut buffer, &aad).unwrap();
+        Write::write(&mut buffer, &iv).unwrap();
+        Write::write(&mut buffer, &tag).unwrap();
+        Write::write(&mut buffer, &aad).unwrap();
         buffer.put_u64(ct.len() as u64);
-        io::Write::write(&mut buffer, &ct).unwrap();
+        Write::write(&mut buffer, &ct).unwrap();
         buffer
     }
 

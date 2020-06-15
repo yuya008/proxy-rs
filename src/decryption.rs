@@ -14,9 +14,9 @@ pub struct Decryption {
 }
 
 impl Decryption {
-    pub fn new(first_key: String, reader: OwnedReadHalf) -> Decryption {
+    pub fn new(key: String, reader: OwnedReadHalf) -> Decryption {
         Decryption {
-            cur_key: first_key.into_bytes(),
+            cur_key: key.into_bytes(),
             alg: Cipher::aes_256_gcm(),
             reader,
             buffer: vec![],
