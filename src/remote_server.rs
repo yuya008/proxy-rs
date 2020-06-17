@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::decryption::Decryption;
 use crate::encryption::Encryption;
 use bytes::Buf;
@@ -16,8 +17,12 @@ pub struct RemoteServer {
 }
 
 impl RemoteServer {
-    pub fn new(key: String, listen: String) -> RemoteServer {
-        RemoteServer { listen, key }
+    pub fn new(config: Config) -> Result<RemoteServer, Box<dyn Error>> {
+        config.verification()?;
+        Ok(RemoteServer {
+            listen: config.listen.to_string(),
+            key: config.key.to_string(),
+        })
     }
 
     pub fn start(&mut self) -> Result<(), Box<dyn Error>> {

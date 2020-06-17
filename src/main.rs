@@ -10,6 +10,7 @@ mod encryption;
 mod local_server;
 mod remote_server;
 
+use crate::config::Config;
 use clap::{crate_version, App, AppSettings, Arg, SubCommand};
 use local_server::LocalServer;
 use remote_server::RemoteServer;
@@ -77,10 +78,16 @@ fn main() {
             let remote_addr = arg_matcher.value_of("remote-addr").unwrap();
             let key = arg_matcher.value_of("key").unwrap();
 
-            LocalServer::new(key.to_string(), listen.to_string(), remote_addr.to_string())
+            let config = Config::new_local_server(listen, remote_addr, key);
+
+            LocalServer::new(config)
+                .unwrap_or_else(|e| {
+                    eprintln!("{}", e);
+                    exit(1);
+                })
                 .start()
                 .unwrap_or_else(|e| {
-                    error!("{:?}", e);
+                    eprintln!("{}", e);
                     exit(1);
                 });
         }
@@ -88,7 +95,13 @@ fn main() {
             let listen = arg_matcher.value_of("listen").unwrap();
             let key = arg_matcher.value_of("key").unwrap();
 
-            RemoteServer::new(key.to_string(), listen.to_string())
+            let config = Config::new_remote_server(listen, key);
+
+            RemoteServer::new(config)
+                .unwrap_or_else(|e| {
+                    error!("{:?}", e);
+                    exit(1);
+                })
                 .start()
                 .unwrap_or_else(|e| {
                     error!("{:?}", e);

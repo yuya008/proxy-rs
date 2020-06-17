@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::decryption::Decryption;
 use crate::encryption::Encryption;
 use std::error::Error;
@@ -15,12 +16,14 @@ pub struct LocalServer {
 }
 
 impl LocalServer {
-    pub fn new(key: String, listen: String, remote_addr: String) -> LocalServer {
-        LocalServer {
-            listen,
-            remote_addr,
-            key,
-        }
+    pub fn new(config: Config) -> Result<LocalServer, Box<dyn Error>> {
+        config.verification()?;
+
+        Ok(LocalServer {
+            listen: config.listen.to_string(),
+            remote_addr: config.remote_addr.to_string(),
+            key: config.key.to_string(),
+        })
     }
 
     pub fn start(&mut self) -> Result<(), Box<dyn Error>> {
