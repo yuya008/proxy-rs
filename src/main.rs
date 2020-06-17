@@ -99,12 +99,12 @@ fn main() {
 
             RemoteServer::new(config)
                 .unwrap_or_else(|e| {
-                    error!("{:?}", e);
+                    eprintln!("{:?}", e);
                     exit(1);
                 })
                 .start()
                 .unwrap_or_else(|e| {
-                    error!("{:?}", e);
+                    eprintln!("{:?}", e);
                     exit(1);
                 });
         }
